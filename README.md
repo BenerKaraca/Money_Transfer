@@ -17,21 +17,7 @@ The project focuses on what happens when requests are retried or infrastructure 
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    UI[React + Redux Toolkit] --> GW[Spring Cloud Gateway]
-    GW --> CORE[Banking core]
-    GW --> FX[FX rates service]
-    CORE --> DB[(Core PostgreSQL)]
-    CORE -->|HTTP| PAY[Payment provider]
-    PAY --> PDB[(Provider PostgreSQL)]
-    CORE -->|Quote validation| FX
-    FX -->|Daily reference rates| RATES[Frankfurter API]
-    CORE -->|Transactional outbox| KAFKA[(Kafka)]
-    KAFKA --> NOTIFY[Notification service]
-    NOTIFY --> NDB[(Notification PostgreSQL)]
-    CORE --> REDIS[(Redis report cache)]
-```
+Docker Compose starts **11 containers by default: six application containers and five infrastructure containers**. The diagram below includes every one of them. SonarQube is an optional twelfth container; Frankfurter is an external rate API, not part of Compose.
 
 | Component | Responsibility |
 | --- | --- |
@@ -82,16 +68,35 @@ The customer authenticates first; financial endpoints check the JWT and account 
 
 ```mermaid
 flowchart TB
-    APP[Customer app] --> GW[API gateway]
-    GW -->|Transfers and payments| CORE[Banking core]
-    GW -->|FX quotes| FX[FX rates service]
-    CORE -->|Payment reconciliation| PAY[Payment provider]
-    CORE -->|Validate FX quote| FX
-    CORE -.->|Transfer event| KAFKA[Kafka]
-    KAFKA -.-> NOTIFY[Notification service]
+    subgraph APPS["6 application containers"]
+        UI[frontend]
+        GW[gateway]
+        CORE[corebank]
+        PAY[payment-provider]
+        FX[fx-rates]
+        NOTIFY[notification]
+    end
+    subgraph INFRA["5 infrastructure containers"]
+        DB[postgres]
+        PDB[payment-postgres]
+        NDB[notification-postgres]
+        KAFKA[broker - Kafka]
+        REDIS[redis]
+    end
+    UI --> GW
+    GW --> CORE
+    GW --> FX
+    CORE --> PAY
+    CORE --> FX
+    CORE -.-> KAFKA
+    KAFKA -.-> NOTIFY
+    CORE --> DB
+    PAY --> PDB
+    NOTIFY --> NDB
+    CORE --> REDIS
 ```
 
-Solid arrows are HTTP calls; dotted arrows are asynchronous Kafka events. The banking core writes a transfer and its outbox event in one local transaction before publishing the event.
+Between applications, solid arrows are HTTP calls. Arrows into PostgreSQL or Redis are data access; dotted arrows are asynchronous Kafka events. The banking core writes a transfer and its outbox event in one local transaction before publishing the event. The FX service also reads daily reference rates from the external Frankfurter API.
 
 1. **Transfer:** the banking core updates balances and ledger entries, then the outbox publisher sends a Kafka event to the notification service.
 2. **Bill payment:** the banking core reserves funds and returns `PENDING`. Its scheduler later calls the payment provider and reconciles the result.
