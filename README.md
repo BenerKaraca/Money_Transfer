@@ -219,10 +219,10 @@ npm run test:coverage
 npm run build
 ```
 
-The latest recorded run passed the Java and React checks, frontend build, and Compose smoke test. JaCoCo and Vitest enforce **100% measured line and branch coverage** for their configured source sets. Coverage is not proof that every distributed failure has been reproduced. The [test and runtime report](docs/08-test-ve-calistirma-durumu.md) lists measured results and remaining gaps.
+The latest recorded run passed the Java and React checks, frontend build, and Compose smoke test. JaCoCo and Vitest enforce **100% measured line and branch coverage** for their configured source sets. Coverage is not proof that every distributed failure has been reproduced. The [engineering decisions](#engineering-decisions) section describes the relevant failure paths.
 
 ## Scope and next steps
 
 BK Bank is intended for technical exploration rather than production banking. The opening balance is seed data, not a modeled funding transaction. The ledger currently records transfers, while FX trades have a separate audit record. Next steps include PostgreSQL concurrency tests, broker and network fault injection, durable FX quotes, complete multi-currency accounting, stronger identity and secret management, and browser end-to-end tests.
 
-See the [architecture and failure-mode notes](docs/04-distributed-and-quality.md) and [use-case diagrams](docs/07-use-case-ve-akis-diyagramlari.md) for more detail.
+See the [architecture](#architecture), [use cases](#use-cases), and [service interactions](#how-services-trigger-each-other) above for the system's boundaries and behavior.
