@@ -194,3 +194,5 @@ The latest recorded run passed the Java and React checks, frontend build, and Co
 BK Bank is intended for technical exploration rather than production banking. The opening balance is seed data, not a modeled funding transaction. The ledger currently records transfers, while FX trades have a separate audit record. Next steps include PostgreSQL concurrency tests, broker and network fault injection, durable FX quotes, complete multi-currency accounting, stronger identity and secret management, and browser end-to-end tests.
 
 See the [architecture](#architecture), [use cases](#use-cases), and [service interactions](#how-services-trigger-each-other) above for the system's boundaries and behavior.
+<img width="1442" height="720" alt="Gemini_Generated_Image_fmm1elfmm1elfmm1" src="https://github.com/user-attachments/assets/4158b003-b0cc-4921-bb58-7d21b8bca91d" />
+<img width="1442" height="720" alt="Gemini_Generated_Image_nyr0pnnyr0pnnyr0" src="https://github.com/user-attachments/assets/c6538a79-aef7-435b-8b20-f890dff9e28d" />
