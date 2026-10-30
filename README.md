@@ -44,6 +44,96 @@ flowchart LR
 
 The banking core is a **modular monolith** because account transfers need one transaction across balances and ledger records. Payments and notifications cross service boundaries because they own separate data and have different failure modes. Docker Compose starts the applications, three PostgreSQL databases, Kafka, and Redis in a repeatable local environment.
 
+## Use cases
+
+The customer works through the React application. Scheduled workers continue payments and publish notifications after the initial request has completed.
+
+```mermaid
+flowchart LR
+    CUSTOMER[Customer]
+    TIMER[Scheduled workers]
+    subgraph BANK["BK Bank"]
+        LOGIN([Sign in])
+        ACCOUNTS([View balances and accounts])
+        TRANSFER([Transfer between accounts])
+        LEDGER([View account activity])
+        PAYMENT([Start and track a bill payment])
+        FX([Get a quote and exchange currency])
+        SPENDING([View spending history])
+        RECONCILE([Reconcile pending payments])
+        PUBLISH([Publish transfer events])
+    end
+    CUSTOMER --> LOGIN
+    CUSTOMER --> ACCOUNTS
+    CUSTOMER --> TRANSFER
+    CUSTOMER --> LEDGER
+    CUSTOMER --> PAYMENT
+    CUSTOMER --> FX
+    CUSTOMER --> SPENDING
+    TIMER --> RECONCILE
+    TIMER --> PUBLISH
+    PAYMENT -.-> RECONCILE
+    TRANSFER -.-> PUBLISH
+```
+
+The customer authenticates first; financial endpoints check the JWT and account ownership. A payment request returns `PENDING` while the provider outcome is processed separately. A completed transfer commits its outbox event before the notification path begins.
+
+## How services trigger each other
+
+```mermaid
+sequenceDiagram
+    actor Customer
+    participant UI as React UI
+    participant Gateway as API Gateway
+    participant Core as Banking core
+    participant DB as Core PostgreSQL
+    participant Provider as Payment provider
+    participant FX as FX service
+    participant Rates as Frankfurter
+    participant Kafka
+    participant Notify as Notification service
+
+    Customer->>UI: Submit transfer
+    UI->>Gateway: POST /api/transfers
+    Gateway->>Core: Route HTTP request
+    Core->>DB: Lock accounts; update balances; write ledger and outbox; COMMIT
+    Core-->>UI: Transfer result
+    Note over Core,Kafka: Later: scheduled outbox publisher
+    Core->>Kafka: Publish committed transfer event
+    Kafka-->>Notify: Deliver event asynchronously
+    Notify->>Notify: Deduplicate in inbox and record notification
+
+    Customer->>UI: Start bill payment
+    UI->>Gateway: POST /api/bill-payments
+    Gateway->>Core: Route HTTP request
+    Core->>DB: Reserve funds; save PENDING; COMMIT
+    Core-->>UI: 202 PENDING
+    Note over Core,Provider: Later: scheduled reconciliation
+    Core->>Provider: HTTP request with stable payment ID
+    Provider-->>Core: Accepted, rejected, or timeout
+    Core->>DB: Settle, release, or retain reservation as UNKNOWN
+
+    Customer->>UI: Request FX quote
+    UI->>Gateway: POST /api/fx/quotes
+    Gateway->>FX: Route HTTP request
+    FX->>Rates: Fetch daily reference rate
+    FX-->>UI: Return time-limited quote
+    Customer->>UI: Confirm exchange
+    UI->>Gateway: POST /api/exchanges
+    Gateway->>Core: Route HTTP request
+    Core->>FX: Validate quote over HTTP
+    Core->>DB: Lock accounts; update balances; save FX trade; COMMIT
+    Core-->>UI: Exchange result
+```
+
+| Trigger | Communication | Consequence |
+| --- | --- | --- |
+| Customer action | React → Gateway → banking core or FX service, synchronous HTTP | Returns a command result, pending payment, or quote. |
+| Payment scheduler or explicit reconciliation request | Banking core → payment provider, synchronous HTTP | Applies the provider's known outcome; retries an uncertain result with the same payment ID. |
+| Outbox scheduler | Banking core → Kafka, asynchronous event publication | Starts notification processing only after the transfer commits. |
+| Kafka delivery | Kafka → notification service, asynchronous event consumption | Records the event once using an inbox key. |
+| FX quote or trade | FX service → Frankfurter, and banking core → FX service, synchronous HTTP | Uses a reference rate and validates the quote before changing balances. |
+
 ## Engineering decisions
 
 ### Atomic transfers and idempotency
