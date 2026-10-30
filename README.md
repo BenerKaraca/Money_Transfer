@@ -96,7 +96,7 @@ sequenceDiagram
     Customer->>UI: Submit transfer
     UI->>Gateway: POST /api/transfers
     Gateway->>Core: Route HTTP request
-    Core->>DB: Lock accounts; update balances; write ledger and outbox; COMMIT
+    Core->>DB: Lock accounts, update balances, write ledger and outbox, commit
     Core-->>UI: Transfer result
     Note over Core,Kafka: Later: scheduled outbox publisher
     Core->>Kafka: Publish committed transfer event
@@ -106,7 +106,7 @@ sequenceDiagram
     Customer->>UI: Start bill payment
     UI->>Gateway: POST /api/bill-payments
     Gateway->>Core: Route HTTP request
-    Core->>DB: Reserve funds; save PENDING; COMMIT
+    Core->>DB: Reserve funds, save PENDING, commit
     Core-->>UI: 202 PENDING
     Note over Core,Provider: Later: scheduled reconciliation
     Core->>Provider: HTTP request with stable payment ID
@@ -122,7 +122,7 @@ sequenceDiagram
     UI->>Gateway: POST /api/exchanges
     Gateway->>Core: Route HTTP request
     Core->>FX: Validate quote over HTTP
-    Core->>DB: Lock accounts; update balances; save FX trade; COMMIT
+    Core->>DB: Lock accounts, update balances, save FX trade, commit
     Core-->>UI: Exchange result
 ```
 
