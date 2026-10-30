@@ -1,0 +1,10 @@
+spring:
+  cache:
+    type: redis
+    cache-names: transferCounts
+    redis:
+      time-to-live: 30s
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}

@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: corebank
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/corebank}
+    username: ${DB_USER:corebank}
+    password: ${DB_PASSWORD:corebank_local_only}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  data:
+    redis:
+      repositories:
+        enabled: false
+corebank:
+  messaging:
+    enabled: ${MESSAGING_ENABLED:false}
+  payments:
+    enabled: ${PAYMENTS_ENABLED:false}
+  payment-provider-url: ${PAYMENT_PROVIDER_URL:http://localhost:8081}
+  fx-rates-url: ${FX_RATES_URL:http://localhost:8083}
+  security:
+    jwt-secret: ${JWT_SECRET:corebank-demo-secret-must-be-at-least-32-bytes-long}
+    token-minutes: ${JWT_TOKEN_MINUTES:30}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+server:
+  address: ${BIND_ADDRESS:127.0.0.1}
+  error:
+    include-message: never

@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: notification-service
+  main:
+    web-application-type: none
+  datasource:
+    url: ${NOTIFICATION_DB_URL:jdbc:postgresql://localhost:5434/notificationdb}
+    username: ${NOTIFICATION_DB_USER:notification}
+    password: ${NOTIFICATION_DB_PASSWORD:notification_local_only}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      group-id: corebank-notifications
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer

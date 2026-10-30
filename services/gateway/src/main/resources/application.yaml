@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: corebank-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: fx-rates-api
+              uri: ${FX_RATES_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/fx/**
+            - id: corebank-api
+              uri: ${COREBANK_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/**
+server:
+  address: ${BIND_ADDRESS:127.0.0.1}
+  port: 8082
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

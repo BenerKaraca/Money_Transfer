@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: fx-rates
+server:
+  address: ${BIND_ADDRESS:127.0.0.1}
+  port: 8083
+fx:
+  provider-url: ${FX_PROVIDER_URL:https://api.frankfurter.dev}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

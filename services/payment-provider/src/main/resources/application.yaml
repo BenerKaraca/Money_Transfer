@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: payment-provider
+  datasource:
+    url: ${PAYMENT_DB_URL:jdbc:postgresql://localhost:5433/paymentdb}
+    username: ${PAYMENT_DB_USER:payment}
+    password: ${PAYMENT_DB_PASSWORD:payment_local_only}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+server:
+  port: 8081
+  address: ${BIND_ADDRESS:127.0.0.1}

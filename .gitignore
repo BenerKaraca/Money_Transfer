@@ -1,0 +1,13 @@
+target/
+**/target/
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+*.log
+frontend/node_modules/
+frontend/dist/
+.runlogs/
+.pptx-build/
+frontend/coverage/
