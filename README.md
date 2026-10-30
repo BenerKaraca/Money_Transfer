@@ -81,58 +81,21 @@ The customer authenticates first; financial endpoints check the JWT and account 
 ## How services trigger each other
 
 ```mermaid
-sequenceDiagram
-    actor Customer
-    participant UI as React UI
-    participant Gateway as API Gateway
-    participant Core as Banking core
-    participant DB as Core PostgreSQL
-    participant Provider as Payment provider
-    participant FX as FX service
-    participant Rates as Frankfurter
-    participant Kafka
-    participant Notify as Notification service
-
-    Customer->>UI: Submit transfer
-    UI->>Gateway: POST /api/transfers
-    Gateway->>Core: Route HTTP request
-    Core->>DB: Lock accounts, update balances, write ledger and outbox, commit
-    Core-->>UI: Transfer result
-    Note over Core,Kafka: Later: scheduled outbox publisher
-    Core->>Kafka: Publish committed transfer event
-    Kafka-->>Notify: Deliver event asynchronously
-    Notify->>Notify: Deduplicate in inbox and record notification
-
-    Customer->>UI: Start bill payment
-    UI->>Gateway: POST /api/bill-payments
-    Gateway->>Core: Route HTTP request
-    Core->>DB: Reserve funds, save PENDING, commit
-    Core-->>UI: 202 PENDING
-    Note over Core,Provider: Later: scheduled reconciliation
-    Core->>Provider: HTTP request with stable payment ID
-    Provider-->>Core: Accepted, rejected, or timeout
-    Core->>DB: Settle, release, or retain reservation as UNKNOWN
-
-    Customer->>UI: Request FX quote
-    UI->>Gateway: POST /api/fx/quotes
-    Gateway->>FX: Route HTTP request
-    FX->>Rates: Fetch daily reference rate
-    FX-->>UI: Return time-limited quote
-    Customer->>UI: Confirm exchange
-    UI->>Gateway: POST /api/exchanges
-    Gateway->>Core: Route HTTP request
-    Core->>FX: Validate quote over HTTP
-    Core->>DB: Lock accounts, update balances, save FX trade, commit
-    Core-->>UI: Exchange result
+flowchart TB
+    APP[Customer app] --> GW[API gateway]
+    GW -->|Transfers and payments| CORE[Banking core]
+    GW -->|FX quotes| FX[FX rates service]
+    CORE -->|Payment reconciliation| PAY[Payment provider]
+    CORE -->|Validate FX quote| FX
+    CORE -.->|Transfer event| KAFKA[Kafka]
+    KAFKA -.-> NOTIFY[Notification service]
 ```
 
-| Trigger | Communication | Consequence |
-| --- | --- | --- |
-| Customer action | React → Gateway → banking core or FX service, synchronous HTTP | Returns a command result, pending payment, or quote. |
-| Payment scheduler or explicit reconciliation request | Banking core → payment provider, synchronous HTTP | Applies the provider's known outcome; retries an uncertain result with the same payment ID. |
-| Outbox scheduler | Banking core → Kafka, asynchronous event publication | Starts notification processing only after the transfer commits. |
-| Kafka delivery | Kafka → notification service, asynchronous event consumption | Records the event once using an inbox key. |
-| FX quote or trade | FX service → Frankfurter, and banking core → FX service, synchronous HTTP | Uses a reference rate and validates the quote before changing balances. |
+Solid arrows are HTTP calls; dotted arrows are asynchronous Kafka events. The banking core writes a transfer and its outbox event in one local transaction before publishing the event.
+
+1. **Transfer:** the banking core updates balances and ledger entries, then the outbox publisher sends a Kafka event to the notification service.
+2. **Bill payment:** the banking core reserves funds and returns `PENDING`. Its scheduler later calls the payment provider and reconciles the result.
+3. **Currency exchange:** the gateway requests a quote from the FX service. On confirmation, the banking core validates that quote with the FX service before updating balances.
 
 ## Engineering decisions
 
